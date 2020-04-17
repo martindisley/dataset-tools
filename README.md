@@ -30,7 +30,9 @@ python dataset-tools.py --input_folder path/to/input/ --output_folder path/to/ou
 * `--height`: height of crop in pixels; use with `--process_type crop`
 * `--width`: width of crop in pixels; use with `--process_type crop`
 * `--shift_y`: y (Top to bottom) amount to shift in pixels; negative values will move it up, positive will move it down; use with `--process_type crop`
+* `--random_shift_y`: random y shift in pixels; takes max shift amount; use with `--process_type crop`
 * `--shift_x`: x (Left to right) amount to shift in pixels; negative values will move it left, positive will move it right; use with `--process_type crop`
+* `--random_shift_x`: random x shift in pixels; takes max shift amount; use with `--process_type crop`
 * `--file_extension`: file format to output *Options*: `jpg`,`png` *Default*: `png`
 
 ## sort.py

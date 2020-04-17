@@ -8,7 +8,7 @@ import random
 # print(cv2.__version__)
 
 def parse_args():
-	desc = "Tools to normalize an image dataset" 
+	desc = "Tools to normalize an image dataset"
 	parser = argparse.ArgumentParser(description=desc)
 
 	parser.add_argument('--verbose', action='store_true',
@@ -30,31 +30,39 @@ def parse_args():
 		default='none',
 		help='Blur process to use. Use with --process_type canny. ["none","gaussian","median"] (default: %(default)s)')
 
-	parser.add_argument('--blur_amount', type=int, 
+	parser.add_argument('--blur_amount', type=int,
 		default=1,
 		help='Amount of blur to apply (use odd numbers). Use with --blur_type.  (default: %(default)s)')
 
-	parser.add_argument('--max_size', type=int, 
+	parser.add_argument('--max_size', type=int,
 		default=512,
 		help='Maximum width or height of the output images. (default: %(default)s)')
 
-	parser.add_argument('--height', type=int, 
+	parser.add_argument('--height', type=int,
 		default=512,
 		help='Maximum height of the output image (for use with --process_type crop). (default: %(default)s)')
 
-	parser.add_argument('--width', type=int, 
+	parser.add_argument('--width', type=int,
 		default=512,
 		help='Maximum width of output image (for use with --process_type crop). (default: %(default)s)')
 
-	parser.add_argument('--shift_y', type=int, 
+	parser.add_argument('--shift_y', type=int,
 		default=0,
 		help='y coordinate shift (for use with --process_type crop). (default: %(default)s)')
 
-	parser.add_argument('--shift_x', type=int, 
+	parser.add_argument('--random_shift_y', type=int,
+		default=0,
+		help='add a random walk in the y_shift (for use with --shift_y). (default: %(default)s)')
+
+	parser.add_argument('--shift_x', type=int,
 		default=0,
 		help='x coordinate shift (for use with --process_type crop). (default: %(default)s)')
 
-	parser.add_argument('--scale', type=float, 
+	parser.add_argument('--random_shift_x', type=int,
+		default=0,
+		help='add a random walk in the y_shift (for use with --shift_x). (default: %(default)s)')
+
+	parser.add_argument('--scale', type=float,
 		default=2.0,
 		help='Scalar value. For use with scale process type (default: %(default)s)')
 
@@ -70,7 +78,7 @@ def parse_args():
 		default='255,255,255',
 		help='border color to use with the `solid` border type; use bgr values (default: %(default)s)')
 
-	# parser.add_argument('--blur_size', type=int, 
+	# parser.add_argument('--blur_size', type=int,
 	# 	default=3,
 	# 	help='Blur size. For use with "canny" process. (default: %(default)s)')
 
@@ -92,6 +100,14 @@ def parse_args():
 	args = parser.parse_args()
 	return args
 
+def add_random_shift(amount):
+	if amount == 0:
+		#if 0 don't do a random shift
+		return amount
+	else:
+		#generate positive int between a 3rd of the amount and the full amount, multiply that either 1 or -1 to go left and right
+		rand_shift = np.random.randint(amount*0.3, amount) * np.random.choice([-1, 1],1)[0]
+		return rand_shift
 
 def image_resize(image, width = None, height = None, max = None):
     # initialize the dimensions of the image to be resized and
@@ -110,7 +126,7 @@ def image_resize(image, width = None, height = None, max = None):
     	else :
     		dim = (max, max)
 
-    else: 
+    else:
 	    # if both the width and height are None, then return the
 	    # original image
 	    if width is None and height is None:
@@ -141,7 +157,7 @@ def image_scale(image, scalar = 1.0):
 	dim = (int(w*scalar),int(h*scalar))
 	# resize the image
 	resized = cv2.resize(image, dim, interpolation = inter)
-	
+
 	# return the resized image
 	return resized
 
@@ -155,7 +171,7 @@ def arbitrary_crop(img, h_crop,w_crop):
 
 	(h, w) = img.shape[:2]
 	if(h>h_crop):
-		hdiff = int((h-h_crop)/2) + args.shift_y
+		hdiff = int((h-h_crop)/2) + args.shift_y + add_random_shift(args.random_shift_y)
 
 		if( ((hdiff+h_crop) > h) or (hdiff < 0)):
 			print("error! crop settings are too much for this image")
@@ -163,8 +179,8 @@ def arbitrary_crop(img, h_crop,w_crop):
 		else:
 			img = img[hdiff:hdiff+h_crop,0:w]
 	if(w>w_crop):
-		wdiff = int((w-w_crop)/2) + args.shift_x
-		
+		wdiff = int((w-w_crop)/2) + args.shift_x + add_random_shift(args.random_shift_x)
+
 		if( ((wdiff+w_crop) > w) or (wdiff < 0) ):
 			print("error! crop settings are too much for this image")
 			error = True
@@ -198,7 +214,7 @@ def crop_square_patch(img, imgSize):
 
 def processCanny(img):
 	gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-	
+
 	if(args.blur_type=='gaussian'):
 		gray = cv2.GaussianBlur(gray, (args.blur_amount, args.blur_amount), 0)
 	elif(args.blur_type=='median'):
@@ -260,7 +276,7 @@ def makeScale(img,filename,scale):
 		os.makedirs(remakePath)
 
 	img_copy = img.copy()
-	
+
 	img_copy = image_scale(img_copy, scale)
 
 	new_file = os.path.splitext(filename)[0] + ".png"
@@ -321,8 +337,8 @@ def makeSquare(img,filename,scale):
 	if (args.mirror): flipImage(img_sq,new_file,sqPath)
 	if (args.rotate): rotateImage(img_sq,new_file,sqPath)
 
-	
-	
+
+
 
 def makeCanny(img,filename,scale):
 	make_path = args.output_folder + "canny-"+str(scale)+"/"
@@ -413,7 +429,7 @@ def makeManySquares(img,filename,scale):
 	elif(img_ratio <= .8):
 		#crop images from left and right
 		print(os.path.splitext(filename)[0] + ': wide image')
-		
+
 		crop = img_copy[0:h,0:h]
 		crop = image_resize(crop, max = scale)
 		new_file = os.path.splitext(filename)[0] + "-wide1.png"
@@ -435,7 +451,7 @@ def makeManySquares(img,filename,scale):
 		cv2.imwrite(os.path.join(make_path, new_file), img_copy, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 		if (args.mirror): flipImage(img_copy,new_file,make_path)
 		if(args.rotate): rotateImage(img_copy,filename,make_path)
-		
+
 
 def makeSquareCropPatch(img,filename,scale):
 	make_path = args.output_folder + "sq-"+str(scale)+"/"
@@ -455,17 +471,17 @@ def makePix2Pix(img,filename,direction="BtoA",value=[0,0,0]):
 	img_p2p = img.copy()
 	(h, w) = img_p2p.shape[:2]
 	bType = cv2.BORDER_CONSTANT
-	
+
 	make_path = args.output_folder + "pix2pix-"+str(h)+"/"
 	if not os.path.exists(make_path):
 		os.makedirs(make_path)
 
 	canny = cv2.cvtColor(processCanny(img_p2p),cv2.COLOR_GRAY2RGB)
-	
+
 	if(direction=="BtoA"):
 		img_p2p = cv2.copyMakeBorder(img_p2p, 0, 0, w, 0, bType, None, value)
 		img_p2p[0:h,0:w] = canny
-	
+
 	if(args.file_extension == "png"):
 		new_file = os.path.splitext(filename)[0] + ".png"
 		cv2.imwrite(os.path.join(make_path, new_file), img_p2p, [cv2.IMWRITE_PNG_COMPRESSION, 0])
@@ -479,7 +495,7 @@ def flipImage(img,filename,path):
 	cv2.imwrite(os.path.join(path, flip_file), flip_img, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 
 def rotateImage(img,filename,path):
-	r = img.copy() 
+	r = img.copy()
 	r = imutils.rotate_bound(r, 90)
 	r_file = os.path.splitext(filename)[0] + "-rot90.png"
 	cv2.imwrite(os.path.join(path, r_file), r, [cv2.IMWRITE_PNG_COMPRESSION, 0])
@@ -494,9 +510,9 @@ def rotateImage(img,filename,path):
 
 def processImage(img,filename):
 
-	if args.process_type == "resize":	
+	if args.process_type == "resize":
 		makeResize(img,filename,args.max_size)
-	if args.process_type == "resize_pad":	
+	if args.process_type == "resize_pad":
 		makeResizePad(img,filename,args.max_size)
 	if args.process_type == "square":
 		makeSquare(img,filename,args.max_size)
@@ -533,7 +549,7 @@ def main():
 		for filename in files:
 			file_path = os.path.join(root, filename)
 			if(args.verbose): print('\t- file %s (full path: %s)' % (filename, file_path))
-			
+
 			img = cv2.imread(file_path)
 
 			if hasattr(img, 'copy'):
